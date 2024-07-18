@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/lib/pq"
 	"log"
 )
@@ -45,7 +46,7 @@ func (s *PostgresStore) CreateTable() error {
 		last_name varchar(50),
     	number serial,
     	balance integer,
-    	create_at timestamp
+    	created_at timestamp
 	)`
 
 	_, err := s.db.Exec(query)
@@ -53,7 +54,25 @@ func (s *PostgresStore) CreateTable() error {
 	return err
 }
 
-func CreateAccount(account *Account) error {
+func (s *PostgresStore) CreateAccount(acc *Account) error {
+	query := `INSERT INTO accounts
+	(first_name, last_name, number, balance, created_at)
+	values ($1, $2, $3, $4, $5)`
+
+	resp, err := s.db.Query(
+		query,
+		acc.FirstName,
+		acc.LastName,
+		acc.Number,
+		acc.Balance,
+		acc.CreatedAt,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%+v\n", resp)
 	return nil
 }
 
