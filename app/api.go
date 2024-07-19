@@ -3,10 +3,10 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/mux"
+	"strconv"
 )
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
@@ -18,7 +18,7 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 type apiFunc func(http.ResponseWriter, *http.Request) error
 
 type ApiError struct {
-	Error string
+	Error string `json:"error"`
 }
 
 func makeHTTPHandlerFunc(f apiFunc) http.HandlerFunc {
@@ -44,7 +44,8 @@ func NewAPIServer(listenAddr string, store PostgresStore) *APIServer {
 func (s APIServer) Run() {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/account", makeHTTPHandlerFunc(s.handleAccount))
+	router.HandleFunc("/accounts", makeHTTPHandlerFunc(s.handleGetAccounts))
+	router.HandleFunc("/accounts/{id}", makeHTTPHandlerFunc(s.handleAccount))
 
 	log.Println("JSON API server running on port: ", s.listenAddr)
 
@@ -64,10 +65,30 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 	}
 }
 
-func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
-	account := NewAccount("Shekhar", "Patil")
+func (s *APIServer) handleGetAccounts(w http.ResponseWriter, r *http.Request) error {
+	accounts, err := s.store.GetAccounts()
 
-	return WriteJSON(w, http.StatusBadRequest, account)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, accounts)
+}
+
+func getId(r *http.Request) (int, error) {
+	idStr := mux.Vars(r)["id"]
+	return strconv.Atoi(idStr)
+}
+
+func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
+	id, err := getId(r)
+	account, err := s.store.GetAccountById(id)
+
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, account)
 }
 
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
@@ -87,7 +108,14 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	id, err := getId(r)
+	err = s.store.DeleteAccount(id)
+
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, map[string]int{"deleted": id})
 }
 
 func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
