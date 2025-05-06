@@ -4,7 +4,7 @@ postgres:
   -e POSTGRES_PASSWORD=secret \
   -p 5432:5432 \
   -v pgdata:/var/lib/postgresql/data \
-  -d postgres:17.4-alpine
+  -d postgres:17.4-alpine3.21
 
 postgres-cli:
 	docker exec -it my-postgres psql -U postgres
@@ -17,8 +17,8 @@ dropdb:
 
 migrate-up:
 	migrate -path db/migrations -database postgresql://postgres:secret@localhost:5432/simple_bank?sslmode=disable up 
-
+	
 migrate-down:
-	docker exec -it my-postgres migrate -path /migrations -database "postgresql://postgres:secret@localhost:5432/simple_bank?sslmode=disable" down
+	migrate -path db/migrations -database postgresql://postgres:secret@localhost:5432/simple_bank?sslmode=disable down
 
-PHONY: createdb dropdb
+.PHONY: postgres postgres-cli createdb dropdb migrate-up migrate-down
